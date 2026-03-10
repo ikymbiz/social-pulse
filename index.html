@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SocialPulse</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen p-4 md:p-8 font-sans text-slate-900 leading-relaxed">
+    <div class="max-w-3xl mx-auto">
+        
+        <header class="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+                <h1 class="text-4xl font-black text-slate-800 tracking-tighter italic uppercase">Social<span class="text-blue-600">Pulse</span></h1>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Tweet Search & Extraction Tool</p>
+            </div>
+            <div class="flex flex-col items-start md:items-end gap-1 w-full md:w-auto">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gemini API Key (Local Save)</label>
+                <input type="password" id="apiKey" oninput="saveSettings()" placeholder="AIzaSy..." class="border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-400 outline-none w-full md:w-64 transition-all shadow-sm">
+            </div>
+        </header>
+
+        <details class="mb-8 group bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+            <summary class="list-none cursor-pointer p-6 flex justify-between items-center group-open:bg-slate-50 transition-all">
+                <div class="flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs">1</span>
+                    <h2 class="text-sm font-black uppercase tracking-widest text-slate-600">🎯 高度な検索・ターゲット条件 (オプション)</h2>
+                </div>
+                <span class="text-slate-400 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            
+            <div class="p-6 space-y-8 border-t border-slate-100">
+                <div class="bg-slate-900 text-white p-5 rounded-2xl">
+                    <label class="block text-[10px] font-bold text-blue-400 uppercase mb-3">AIに検索条件を提案させる</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="setupTheme" placeholder="例：最新のAIツール、特定のイベント..." class="flex-1 bg-white/10 border border-white/10 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                        <button onclick="aiSetup()" id="setupBtn" class="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded-xl text-sm font-bold transition-all active:scale-95 whitespace-nowrap">構成開始</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">ターゲットユーザー・属性</label>
+                        <textarea id="userFilter" oninput="saveSettings()" rows="5" class="w-full border border-slate-100 rounded-xl p-3 text-sm bg-slate-50/50 outline-none focus:ring-2 focus:ring-blue-400 transition-all" placeholder="どのような層のツイートを収集するか"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">メタデータ条件（期間・エンゲージメント等）</label>
+                        <textarea id="metaFilter" oninput="saveSettings()" rows="5" class="w-full border border-slate-100 rounded-xl p-3 text-sm bg-slate-50/50 outline-none focus:ring-2 focus:ring-blue-400 transition-all" placeholder="例：過去1週間、いいね50以上、等"></textarea>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">追加の除外ルール・制限</label>
+                    <input type="text" id="customInstruction" oninput="saveSettings()" placeholder="例：Botアカウントを除外、URL付きのみ抽出等" class="w-full border border-slate-100 rounded-xl p-3 text-sm bg-slate-50/50 outline-none focus:ring-2 focus:ring-blue-400 transition-all">
+                </div>
+
+                <details>
+                    <summary class="text-[10px] font-bold text-slate-300 cursor-pointer uppercase hover:text-blue-500 list-none mt-4 text-center">生成ロジックを表示（上級者用）</summary>
+                    <textarea id="promptTemplate" oninput="saveSettings()" rows="6" class="mt-3 w-full border border-slate-100 rounded-xl p-3 text-[10px] font-mono bg-slate-900 text-blue-300 outline-none"></textarea>
+                </details>
+            </div>
+        </details>
+
+        <section class="bg-white p-8 rounded-[2.5rem] shadow-xl border-2 border-blue-50 space-y-6">
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs shadow-lg shadow-blue-200">2</span>
+                    <h2 class="text-sm font-black uppercase tracking-widest text-slate-700">🔍 ツイートを検索・抽出する</h2>
+                </div>
+                <select id="format" onchange="saveSettings()" class="text-[10px] font-black bg-blue-50 text-blue-600 px-4 py-2 rounded-xl outline-none border-none cursor-pointer hover:bg-blue-100 transition-all">
+                    <option value="抽出ツイートリスト表示">リスト表示</option>
+                    <option value="CSV形式データ出力" selected>CSV形式データ出力</option>
+                </select>
+            </div>
+
+            <div class="space-y-4">
+                <div class="group">
+                    <label class="block text-[10px] font-bold text-slate-400 group-focus-within:text-blue-500 transition-colors uppercase mb-1">検索キーワード / ハッシュタグ</label>
+                    <textarea id="perspective" rows="2" class="w-full border border-slate-200 rounded-2xl p-4 text-sm focus:border-blue-400 outline-none transition-all resize-none bg-slate-50/30" placeholder="例：#最新AIツール, 〇〇イベントなど、抽出したいキーワードを入力..."></textarea>
+                </div>
+            </div>
+
+            <button onclick="generateAnalysis()" id="genBtn" class="w-full bg-slate-900 text-white font-black py-5 rounded-2xl shadow-2xl active:scale-[0.98] transition-all hover:bg-blue-600 tracking-[0.4em] text-sm">SEARCH & EXTRACT</button>
+        </section>
+
+        <div id="loader" class="hidden text-center py-10">
+            <div class="inline-flex items-center gap-2 px-6 py-3 bg-white rounded-full shadow-sm border border-slate-100">
+                <div class="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Searching & Extracting...</span>
+            </div>
+        </div>
+
+        <div id="resultArea" class="hidden space-y-4 mt-8">
+            <div class="bg-white p-8 rounded-[2rem] border border-blue-100 shadow-2xl relative group">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-[10px] font-black text-blue-500 uppercase tracking-widest">Extraction Result</span>
+                    <span id="charCount" class="text-[10px] font-mono text-slate-300">0 chars</span>
+                </div>
+                <p id="analysisOutput" class="text-slate-800 text-[14px] leading-relaxed whitespace-pre-wrap font-mono select-all overflow-x-auto"></p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button onclick="copyToClipboard()" id="copyBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-100 transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <span class="uppercase tracking-widest text-sm">Copy to Clipboard</span>
+                </button>
+                <button onclick="analyzeData()" id="analyzeBtn" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-slate-200 transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <span class="uppercase tracking-widest text-sm">AI Analysis (要約・感情)</span>
+                </button>
+            </div>
+
+            <div id="analysisResultArea" class="hidden mt-6 bg-slate-900 p-6 md:p-8 rounded-3xl shadow-xl">
+                <h3 class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                    AI Insights
+                </h3>
+                <p id="summaryOutput" class="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-mono"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const WORKER_URL = 'https://green-credit-a6fb.ikymbiz.workers.dev';
+
+        // --- データの読み込み ---
+        window.onload = () => {
+            const saved = JSON.parse(localStorage.getItem('social_pulse_v2') || '{}');
+            document.getElementById('apiKey').value = saved.apiKey || '';
+            document.getElementById('userFilter').value = saved.userFilter || '';
+            document.getElementById('metaFilter').value = saved.metaFilter || '';
+            document.getElementById('format').value = saved.format || 'CSV形式データ出力';
+            document.getElementById('customInstruction').value = saved.customInstruction || '';
+            document.getElementById('promptTemplate').value = saved.promptTemplate || '';
+            document.getElementById('perspective').value = saved.perspective || '';
+        };
+
+        // --- データの保存 ---
+        function saveSettings() {
+            const settings = {
+                apiKey: document.getElementById('apiKey').value,
+                userFilter: document.getElementById('userFilter').value,
+                metaFilter: document.getElementById('metaFilter').value,
+                format: document.getElementById('format').value,
+                customInstruction: document.getElementById('customInstruction').value,
+                promptTemplate: document.getElementById('promptTemplate').value,
+                perspective: document.getElementById('perspective').value
+            };
+            localStorage.setItem('social_pulse_v2', JSON.stringify(settings));
+        }
+
+        // --- セクション1: 検索条件構成AI ---
+        async function aiSetup() {
+            const theme = document.getElementById('setupTheme').value;
+            const apiKey = document.getElementById('apiKey').value;
+            if (!theme) { alert('検索キーワードやテーマを入力してください'); return; }
+
+            const btn = document.getElementById('setupBtn');
+            btn.innerText = "構成中..."; btn.disabled = true;
+
+            const setupPrompt = `あなたはSNSデータ抽出ツールです。テーマ: "${theme}" に関するツイート検索・抽出のための設定をJSON形式のみで作成してください。
+JSONフォーマット:
+{
+  "userFilter": "ターゲット層や注視すべきユーザー属性の定義",
+  "metaFilter": "検索期間やエンゲージメント（いいね・RT数）の基準",
+  "template": "抽出指示テンプレート。{{userFilter}}, {{metaFilter}}, {{custom}}, {{format}}, {{perspective}} を全て使い、AIが指定条件に基づく架空の代表的なツイート群を検索・抽出し、指定フォーマット({{format}})でシンプルに出力するように指示するプロンプトを設計してください。"
+}`;
+
+            try {
+                const res = await fetch(WORKER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: setupPrompt, apiKey: apiKey })
+                });
+                
+                const textRes = await res.text();
+                let resText = textRes;
+                
+                try {
+                    const data = JSON.parse(textRes);
+                    if (data.candidates && data.candidates[0].content) {
+                        resText = data.candidates[0].content.parts[0].text;
+                    } else if (data.response) {
+                        resText = data.response;
+                    }
+                } catch (e) {}
+
+                const match = resText.match(/\{[\s\S]*\}/);
+                if (!match) throw new Error('AIからの応答が不正なフォーマットです。');
+                
+                const config = JSON.parse(match[0]);
+
+                document.getElementById('userFilter').value = config.userFilter || '';
+                document.getElementById('metaFilter').value = config.metaFilter || '';
+                document.getElementById('promptTemplate').value = config.template || '';
+                saveSettings();
+                alert('検索・ターゲット条件の構成が完了しました。');
+            } catch (e) {
+                alert('構成失敗: ' + e.message);
+                console.error(e);
+            } finally {
+                btn.innerText = "構成開始"; btn.disabled = false;
+            }
+        }
+
+        // --- セクション2: 抽出生成 ---
+        async function generateAnalysis() {
+            saveSettings();
+            
+            const apiKey = document.getElementById('apiKey').value;
+            let template = document.getElementById('promptTemplate').value;
+            if (!template) { 
+                template = "以下の条件に基づき、架空の代表的なツイート群を検索・抽出し、指定フォーマット({{format}})でシンプルに出力してください。\n検索キーワード: {{perspective}}\nターゲット層: {{userFilter}}\nメタデータ条件: {{metaFilter}}\n除外ルール: {{custom}}";
+                document.getElementById('promptTemplate').value = template;
+            }
+
+            const loader = document.getElementById('loader');
+            const resultArea = document.getElementById('resultArea');
+            const genBtn = document.getElementById('genBtn');
+
+            const finalPrompt = template
+                .replace(/{{userFilter}}/g, document.getElementById('userFilter').value || '指定なし')
+                .replace(/{{metaFilter}}/g, document.getElementById('metaFilter').value || '指定なし')
+                .replace(/{{custom}}/g, document.getElementById('customInstruction').value || '指定なし')
+                .replace(/{{format}}/g, document.getElementById('format').value)
+                .replace(/{{perspective}}/g, document.getElementById('perspective').value || '指定なし');
+
+            loader.classList.remove('hidden'); resultArea.classList.add('hidden'); genBtn.disabled = true;
+            document.getElementById('analysisResultArea').classList.add('hidden');
+
+            try {
+                const res = await fetch(WORKER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: finalPrompt, apiKey: apiKey })
+                });
+                
+                const textRes = await res.text();
+                let output = textRes;
+                
+                try {
+                    const data = JSON.parse(textRes);
+                    if (data.candidates && data.candidates[0].content) {
+                        output = data.candidates[0].content.parts[0].text;
+                    } else if (data.response) {
+                        output = data.response;
+                    }
+                } catch (e) {}
+
+                // コードブロックのマークダウン記法(```csv や ```)が混入した場合に除去する処理
+                output = output.replace(/^```[a-z]*\n/gm, '').replace(/```$/gm, '').trim();
+                
+                document.getElementById('analysisOutput').innerText = output;
+                document.getElementById('charCount').innerText = `${output.length} chars`;
+                resultArea.classList.remove('hidden');
+                resultArea.scrollIntoView({ behavior: 'smooth' });
+            } catch (e) {
+                alert('抽出エラー: ' + e.message);
+            } finally {
+                loader.classList.add('hidden'); genBtn.disabled = false;
+            }
+        }
+
+        // --- 追加機能: AIによる簡易要約・感情分析 ---
+        async function analyzeData() {
+            const data = document.getElementById('analysisOutput').innerText;
+            if (!data) return;
+
+            const apiKey = document.getElementById('apiKey').value;
+            const btn = document.getElementById('analyzeBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="uppercase tracking-widest text-sm">Analyzing...</span>';
+            btn.disabled = true;
+
+            const analysisPrompt = `あなたは優秀なデータアナリストです。以下の抽出されたツイートデータに基づいて、主要なトピックの要約、よく使われているキーワード、そして全体的な感情（ポジティブ・ネガティブ・中立）の傾向を簡潔に箇条書きで分析してください。\n\nデータ:\n${data}`;
+
+            try {
+                const res = await fetch(WORKER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: analysisPrompt, apiKey: apiKey })
+                });
+                
+                const textRes = await res.text();
+                let output = textRes;
+                
+                try {
+                    const parsed = JSON.parse(textRes);
+                    if (parsed.candidates && parsed.candidates[0].content) {
+                        output = parsed.candidates[0].content.parts[0].text;
+                    } else if (parsed.response) {
+                        output = parsed.response;
+                    }
+                } catch (e) {}
+
+                document.getElementById('summaryOutput').innerText = output.trim();
+                const analysisResultArea = document.getElementById('analysisResultArea');
+                analysisResultArea.classList.remove('hidden');
+                analysisResultArea.scrollIntoView({ behavior: 'smooth' });
+            } catch (e) {
+                alert('分析エラー: ' + e.message);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // --- コピー機能 ---
+        function copyToClipboard() {
+            const text = document.getElementById('analysisOutput').innerText;
+            const btn = document.getElementById('copyBtn');
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = btn.innerHTML;
+                btn.classList.replace('bg-blue-600', 'bg-green-600');
+                btn.innerHTML = '<span class="uppercase tracking-widest text-sm">COPIED!</span>';
+                setTimeout(() => {
+                    btn.classList.replace('bg-green-600', 'bg-blue-600');
+                    btn.innerHTML = originalText;
+                }, 1500);
+            });
+        }
+    </script>
+</body>
+</html>
